@@ -7,7 +7,14 @@ import android.view.View;
 import android.widget.Button;
 
 public class HomeActivity extends AppCompatActivity {
-    //hello world
+    // THIS IS HOW TO UPLOAD TO GITHUB
+    // 1) git add .
+    // 2) git commit -m "YOUR CUSTOM MESSAGE"
+    // 3) git push
+
+
+    // THIS IS HOW TO DOWNLOAD
+    // 1) git pull
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState); // Tells android that you have this java file
