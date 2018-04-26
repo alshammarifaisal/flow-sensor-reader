@@ -15,6 +15,8 @@ public class HomeActivity extends AppCompatActivity {
 
     // THIS IS HOW TO DOWNLOAD
     // 1) git pull
+    
+    // this is an example edit
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState); // Tells android that you have this java file
