@@ -2,9 +2,11 @@
 
 package com.example.faisal.flowsensorreader;
 
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import android.support.v4.app.ShareCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -37,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
+        final Activity mainActivity = this;
         //Get access to contact button
         Button contactButton = (Button) findViewById(R.id.contactButton);
 
@@ -50,12 +52,12 @@ public class MainActivity extends AppCompatActivity {
                 String subject = "Contact Flow Sensor";    // subject for email
                 String address = "contact@flow.com";      // email address for the company
 
-                Intent intent = new Intent(Intent.ACTION_VIEW); // Create intent object, a query to the android phone to create an email
-                intent.setType("text/plain"); // the content of the intent is in plain text
-                intent.putExtra(Intent.EXTRA_EMAIL, address); //specify the address of the email
-                intent.putExtra(Intent.EXTRA_SUBJECT, subject); // specify the subject of the email
-
-                startActivity(Intent.createChooser(intent, "Send Email"));
+                ShareCompat.IntentBuilder.from(mainActivity)
+                        .setType("message/rfc822")
+                        .addEmailTo(address)
+                        .setSubject(subject)
+                        .setChooserTitle("Select mail client")
+                        .startChooser();
             }
         });
 
