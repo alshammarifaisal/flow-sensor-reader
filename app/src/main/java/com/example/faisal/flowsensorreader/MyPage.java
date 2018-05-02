@@ -20,12 +20,16 @@ import org.json.JSONObject;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 public class MyPage extends AppCompatActivity {
+
+    final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,19 +49,18 @@ public class MyPage extends AppCompatActivity {
         lineChartStyle.setXLabelFormatter(new LineChartStyle.LabelFormatter() {
             @Override
             public String format(long value) {
-                return DateFormat.format("dd:HH:mm:ss", value).toString();
+                return DateFormat.format("MM/dd", value).toString();
             }
         });
+
         lineChartStyle.setYLabelWidth(80.0f);
 
         final DateLineChartView chartView = new DateLineChartView(this, lineChartStyle);
         chartView.setStyle(lineChartStyle);
         chartContainer.addView(chartView);
 
-
-
         // Instantiate the RequestQueue.
-        RequestQueue queue = Volley.newRequestQueue(this);
+        RequestQueue queue = Volley.newRequestQueue(MyPage.this);
 
         String url = "https://riversense.rubiconsensors.com/api";
 
@@ -66,6 +69,7 @@ public class MyPage extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
+                        System.out.println("RESPONSE: " + response);
                         try{
                             // Save response as a JSONObject
                             JSONObject root  = new JSONObject(response);
@@ -73,7 +77,6 @@ public class MyPage extends AppCompatActivity {
                             Iterator iter = root.keys();
                             // Create list of points
                             List<LineChartView.Point> points = new ArrayList<>();
-
                             // Loop through all the keys
                             while(iter.hasNext()){
                                 // Get key name (Date)
@@ -83,7 +86,12 @@ public class MyPage extends AppCompatActivity {
 
                                 // Add to list of points (may not parse correctly)
                                 try {
-                                    points.add(new LineChartView.Point(date(key), value));
+                                    Calendar c=Calendar.getInstance();
+                                    c.add(Calendar.DATE,-7);
+                                    if(c.getTime().compareTo(dateFormat.parse(key)) <= 0){
+                                        points.add(new LineChartView.Point(date(key), value));
+                                    }
+
                                 } catch (ParseException e) {
                                     throw new RuntimeException(e);
                                 }
@@ -99,15 +107,15 @@ public class MyPage extends AppCompatActivity {
                 }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                System.out.println(error.getMessage());
+                System.out.println("THERE WAS A NETWORK ERROR\n" + error.getMessage());
             }
         });
 
         queue.add(stringRequest);
+        System.out.println("adding to request queue");
     }
 
 
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
     private long date(String date) throws ParseException {
         return dateFormat.parse(date).getTime();
