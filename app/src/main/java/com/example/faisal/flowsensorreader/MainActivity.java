@@ -10,10 +10,31 @@ import android.support.v4.app.ShareCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.hogel.android.linechartview.LineChartView;
+import org.json.JSONObject;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -77,16 +98,14 @@ public class MainActivity extends AppCompatActivity {
         //Button is the type that it takes from activity_mail.xml
 
 
-        final Intent homePageIntent = new Intent (this, HomeActivity.class);
-
 
         //When the user presses the 'loginButton' it runs this code.
         loginButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v){
                 //access to the text inside of 'usernameText' and 'passwordText'
-                String username = usernameText.getText().toString();
-                String password = passwordText.getText().toString();
+                final String username = usernameText.getText().toString();
+                final String password = passwordText.getText().toString();
 
                 // Check if the username and password is empty
                 if(username.length() == 0 || password.length() == 0){
@@ -103,9 +122,46 @@ public class MainActivity extends AppCompatActivity {
                             });
                     alertDialog.show(); // show the alert.
                 } else {
-                    // the user and password is correct,
-                    // change the activity to the homepage (Sends the user to the homepage)
-                    startActivity(homePageIntent);
+                    String url = String.format("https://%s:%s@riversense.rubiconsensors.com/api2", username, password); // url where to get the data
+
+                    StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                             startActivity(new Intent (MainActivity.this, HomeActivity.class).
+                                     putExtra("password", password).
+                                     putExtra("username", username));
+                        }
+
+                    }, new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+                            alertDialog.setTitle("Invalid Username or Password"); // The title of the alert
+                            alertDialog.setMessage("Your username or password is invalid."); //message of the alert
+                            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                                    new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialogInterface, int i) {
+                                            dialogInterface.dismiss(); // when you press 'ok' it removes the alert
+                                        }
+                                    });
+                            alertDialog.show(); // show the alert.
+                        }
+                    }) {
+                        @Override
+                        public Map<String, String> getHeaders() throws AuthFailureError {
+                            HashMap<String, String> params = new HashMap<String, String>();
+                            params.put("Content-Type", "application/json");
+                            String creds = String.format("%s:%s",username,password);
+                            String auth = "Basic " + Base64.encodeToString(creds.getBytes(), Base64.DEFAULT);
+                            params.put("Authorization", auth);
+                            return params;
+
+                        }
+                    };
+
+                    RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
+                    queue.add(request);
                 }
             }
         });

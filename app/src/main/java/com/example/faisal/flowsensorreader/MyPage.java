@@ -1,10 +1,16 @@
 package com.example.faisal.flowsensorreader;
 
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.format.DateFormat;
+import android.util.Base64;
+import android.view.View;
 import android.view.ViewGroup;
 
+import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -38,6 +44,22 @@ public class MyPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my_page);
 
+        Intent thisIntent = getIntent();
+        if(thisIntent == null){
+            System.out.println("thisIntent is null");
+            logout();
+            return;
+        }
+        final String username = thisIntent.getStringExtra("username");
+        final String password = thisIntent.getStringExtra("password");
+
+        if(username == null || password == null){
+            System.out.println("username or password was null");
+            System.out.println(username + ":" + password);
+            logout();
+            return;
+        }
+
         // Reference the chart Container refers to the id 'chart_parent'
         ViewGroup chartContainer = (ViewGroup) findViewById(R.id.chart_parent);
 
@@ -64,72 +86,83 @@ public class MyPage extends AppCompatActivity {
         chartView.setStyle(lineChartStyle); // set style again. you must
         chartContainer.addView(chartView); // insert the line chart into the activity 'activity_my_page.xml'
 
-        // Create the RequestQueue.
-        RequestQueue queue = Volley.newRequestQueue(MyPage.this); //this is how it is
+        String url = String.format("https://%s:%s@riversense.rubiconsensors.com/api2", username, password); // url where to get the data
 
-        String url = "https://riversense.rubiconsensors.com/api"; // url where to get the data
+        StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                System.out.println(response);
+                try{
+                    // Save response as a JSONObject
+                    JSONObject root  = new JSONObject(response);
+                    // Get all keys
+                    Iterator iter = root.keys();
+                    // Create list of points
+                    List<LineChartView.Point> points = new ArrayList<>();
+                    // Loop through all the keys
+                    while(iter.hasNext()){
+                        // Get key name (Date)
+                        // key-> "2018-04-12T14:42:42.230Z": value->0.0
+                        String key = (String)iter.next();
 
-        // Request a string response from the provided URL.
-        // new creates an object
-        // get is the type of requests
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try{
-                            // Save response as a JSONObject
-                            JSONObject root  = new JSONObject(response);
-                            // Get all keys
-                            Iterator iter = root.keys();
-                            // Create list of points
-                            List<LineChartView.Point> points = new ArrayList<>();
-                            // Loop through all the keys
-                            while(iter.hasNext()){
-                                // Get key name (Date)
-                                // key-> "2018-04-12T14:42:42.230Z": value->0.0
-                                String key = (String)iter.next();
+                        // Get value name (sensor data)
+                        long value = root.getLong(key);
 
-                                // Get value name (sensor data)
-                                long value = root.getLong(key);
-
-                                // Add to list of points (may not parse correctly)
-                                try {
-                                    //check if the date is greater than a week ago
-                                    Calendar c=Calendar.getInstance();
-                                    c.add(Calendar.DATE,-7); // Current date - 7 = 7 days ago
-                                    if(c.getTime().compareTo(dateFormat.parse(key)) <= 0){
-                                        // if the date is less than a week, then add to list of points
-                                        points.add(new LineChartView.Point(date(key), value));
-                                    }
-
-                                } catch (ParseException e) {
-                                    throw new RuntimeException(e); // if there is an error, stop the program
-                                }
+                        // Add to list of points (may not parse correctly)
+                        try {
+                            //check if the date is greater than a week ago
+                            Calendar c=Calendar.getInstance();
+                            c.add(Calendar.DATE,-7); // Current date - 7 = 7 days ago
+                            if(c.getTime().compareTo(dateFormat.parse(key)) <= 0){
+                                // if the date is less than a week, then add to list of points
+                                System.out.println("adding: " + key);
+                                points.add(new LineChartView.Point(date(key), value));
                             }
 
-                            // add the points to the line chart
-                            chartView.setPoints(points);
-                        } catch(Exception ex){
-                            System.out.println(ex.getMessage());
+                        } catch (ParseException e) {
+                            throw new RuntimeException(e); // if there is an error, stop the program
                         }
-
                     }
-                }, new Response.ErrorListener() {
+
+                    // add the points to the line chart
+                    chartView.setPoints(points);
+                } catch(Exception ex){
+                    System.out.println(ex.getMessage());
+                }
+            }
+
+
+
+        }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                System.out.println("THERE WAS A NETWORK ERROR\n" + error.getMessage());
+                logout();
             }
-        });
+        }) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String, String> params = new HashMap<String, String>();
+                params.put("Content-Type", "application/json");
+                String creds = String.format("%s:%s",username,password);
+                String auth = "Basic " + Base64.encodeToString(creds.getBytes(), Base64.DEFAULT);
+                params.put("Authorization", auth);
+                return params;
 
-        // make the request
-        queue.add(stringRequest);
-        System.out.println("adding to request queue");
+            }
+        };
+
+        RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
+        queue.add(request);
     }
-
-
 
     private long date(String date) throws ParseException {
         return dateFormat.parse(date).getTime();
+    }
+
+    private void logout(){
+        final Intent logoutIntent = new Intent(this, MainActivity.class);
+        logoutIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK); // only do this for logging out!
+        startActivity(logoutIntent);
     }
 
 }
